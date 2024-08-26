@@ -1,19 +1,25 @@
 <template>
-  <div v-if="!isLoading && lyrics.syncedLyrics" class="flex flex-1 items-center justify-center">
-    <p v-for="line in lyrics.parsedLyrics" v-bind:key="line.id">
-      <span
-        :class="[isActiveLine(line.timestamp) ? 'font-bold' : 'hidden', 'text-6xl text-slate-100']"
-        >{{ line.line }}</span
-      >
+  <div v-if="!isLoading && lyrics.syncedLyrics" class="flex flex-1 items-center justify-center p-4">
+    <p
+      v-for="line in lyrics.parsedLyrics"
+      v-bind:key="line.id"
+      :class="[
+        isActiveLine(line.timestamp) ? 'font-bold' : 'hidden',
+        'text-center text-6xl select-none w-full'
+      ]"
+      :style="{ color: getContrastColor(dominantColor) }"
+    >
+      {{ line.line || '...' }}
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
+import { getContrastColor } from '@/plugins/Colors'
 import type { LrcLyrics } from '@/types/LrcLib'
 import { onMounted, onUnmounted, ref } from 'vue'
 
-const props = defineProps(['progressMs'])
+const props = defineProps(['progressMs', 'dominantColor'])
 
 const lyrics = ref<LrcLyrics>({} as LrcLyrics)
 const isLoading = ref(true)

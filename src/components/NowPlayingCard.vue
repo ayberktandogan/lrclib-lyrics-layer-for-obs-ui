@@ -1,20 +1,30 @@
 <template>
   <div class="absolute flex flex-col overflow-hidden left-4">
     <div
-      class="relative overflow-hidden bg-black/50 backdrop-blur-md backdrop-opacity-100 shadow-xl ring-1 ring-gray-900/5 sm:min-w-72 sm:max-w-lg sm:rounded-lg lg:max-w-2xl lg:min-w-96 pr-4"
+      class="relative backdrop-blur-md backdrop-opacity-100 shadow-xl sm:min-w-72 sm:max-w-lg lg:max-w-2xl lg:min-w-96"
     >
-      <div class="mx-auto">
+      <div class="mx-auto sm:rounded-lg overflow-hidden bg-black/50 pr-4">
         <div v-if="isLoading"></div>
         <div v-else-if="isDataAvailable" class="flex items-center gap-4 text-gray-100">
           <img :src="albumArt" class="h-36" alt="Tailwind Play" />
           <div class="min-w-0">
-            <h1 class="text-2xl">{{ playing.item?.name }}</h1>
+            <h1 class="text-2xl font-bold">{{ playing.item?.name }}</h1>
             <h2 class="text-lg truncate">
               {{ playing.item?.artists?.[0]?.name }} - {{ playing.item?.album?.name }}
             </h2>
-            {{ formattedProgress }}
-            <v-icon v-if="playing.is_playing" name="md-playarrow" />
-            <v-icon v-else name="md-pause-sharp" />
+            <div>
+              {{ formattedProgress }}
+              <v-icon v-if="playing.is_playing" name="md-playarrow" />
+              <v-icon v-else name="md-pause-sharp" />
+              <div
+                class="mt-4 relative progress-bar w-full bg-white/50 h-1 rounded-sm overflow-hidden"
+              >
+                <div
+                  class="absolute h-1 left-0 top-0 z-10"
+                  :style="{ width: `${progress}%`, 'background-color': dominantColor }"
+                ></div>
+              </div>
+            </div>
           </div>
         </div>
         <div v-else>No music is playing right now...</div>
@@ -28,7 +38,8 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { SpotifyCurrentlyPlaying } from '@/types/Spotify'
 
-const emit = defineEmits(['updateProgress', 'updateNowPlaying'])
+const props = defineProps(['dominantColor'])
+const emit = defineEmits(['setProgress', 'updateNowPlaying'])
 
 const playing = ref<SpotifyCurrentlyPlaying>({} as SpotifyCurrentlyPlaying)
 const isLoading = ref(true)
@@ -41,6 +52,9 @@ const albumArt = computed(() => {
 })
 const isDataAvailable = computed(() => {
   return !isLoading.value && playing.value.device
+})
+const progress = computed(() => {
+  return (currentProgressMs.value! * 100) / playing.value.item.duration_ms
 })
 const formattedProgress = computed(() => {
   if (currentProgressMs.value === null) return ''
@@ -106,7 +120,7 @@ function updateProgress() {
   if (startTime.value === null) return
   const elapsed = performance.now() - startTime.value
   currentProgressMs.value = playing.value.progress_ms + elapsed
-  emit('updateProgress', currentProgressMs.value)
+  emit('setProgress', currentProgressMs.value)
   // Request the next frame
   animationFrameId.value = requestAnimationFrame(updateProgress)
 }
