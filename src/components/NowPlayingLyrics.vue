@@ -1,34 +1,58 @@
 <template>
-  <div v-if="!isLoading && lyrics.syncedLyrics">
+  <div v-if="!isLoading && lyrics.syncedLyrics" class="flex flex-1 items-center justify-center">
     <p v-for="line in lyrics.parsedLyrics" v-bind:key="line.id">
-      {{ line.line }}
+      <span
+        :class="[isActiveLine(line.timestamp) ? 'font-bold' : 'hidden', 'text-6xl text-slate-100']"
+        >{{ line.line }}</span
+      >
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import type { LrcLyrics } from '@/types/LrcLib'
+import { onMounted, onUnmounted, ref } from 'vue'
 
-const lyrics = ref({
-  syncedLyrics: '',
-  parsedLyrics: [
-    {
-      id: 1,
-      line: '',
-      timestamp: 0
-    }
-  ]
-})
+const props = defineProps(['progressMs'])
+
+const lyrics = ref<LrcLyrics>({} as LrcLyrics)
 const isLoading = ref(true)
 
+let intervalId: number | undefined
+
+function isActiveLine(timestamp: number) {
+  return props.progressMs >= timestamp && props.progressMs < getNextTimestamp(timestamp)
+}
+function getNextTimestamp(currentTimestamp: number) {
+  const currentIndex = lyrics.value.parsedLyrics!.findIndex(
+    (line) => line.timestamp === currentTimestamp
+  )
+  return currentIndex < lyrics.value.parsedLyrics!.length - 1
+    ? lyrics.value.parsedLyrics![currentIndex + 1].timestamp
+    : Infinity
+}
+
 onMounted(async () => {
-  const response = await fetch('/api/lyrics', {
-    method: 'GET'
-  })
+  const fetchData = async () => {
+    const response = await fetch('/api/lyrics', {
+      method: 'GET'
+    })
 
-  const body = await response.json()
+    const body = (await response.json()) as LrcLyrics
+    if (lyrics.value?.id === body?.id) {
+      return
+    }
 
-  lyrics.value = body
-  isLoading.value = false
+    lyrics.value = body
+    isLoading.value = false
+  }
+
+  intervalId = setInterval(fetchData, 1000)
+})
+
+onUnmounted(async () => {
+  if (intervalId) {
+    clearInterval(intervalId)
+  }
 })
 </script>
